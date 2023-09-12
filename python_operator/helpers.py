@@ -1,42 +1,34 @@
-# import jinja2
-# import yaml
+from kubernetes import utils
+import logging
 
-# jinja_env = jinja2.Environment(
-#     loader=jinja2.PackageLoader(__package__)
-# )
+def usage_ram_cpu_pod(containers):
+    return calculate_ram_cpu_pod(containers, "usage")
 
+def request_ram_cpu_pod(containers):
+    return calculate_ram_cpu_pod(containers, "requests")
 
-# def render_template(template_name, context):
-#     """
-#     Render Jinja template with given context.
+def limit_ram_cpu_pod(containers):
+    return calculate_ram_cpu_pod(containers, "limits")
 
-#     :return JSON object
-#     """
-#     template = jinja_env.get_template(template_name)
-#     body = yaml.safe_load(template.render(context))
-#     return body
+def calculate_ram_cpu_pod(containers, query):
+    """
+    input values: [containers]
+    output values: { 'memory': Decimal,'cpu': Decimal}
+    """
+    container_usage_result = {  'memory': 0,   'cpu': 0  }
+    for container in containers:
+        container_usage = None
+        if query == "usage" and query in container:
+            container_usage = container["usage"]  # For the metrics api
+        elif query in container["resources"]:
+            container_usage = container["resources"][query]
+        else:
+            logging.fatal(f"the {query} key doesn't exist")
 
+        cpu_value = utils.parse_quantity(container_usage["cpu"])
+        ram_value = utils.parse_quantity(container_usage["memory"])
 
-# def filter_keys_by_prefix(key_dict, prefix):
-#     """
-#     Returns dict having only keys with given path prefix.
-#     """
-#     prefix = f'{prefix}/'
-#     filtered = {
-#         k.split('/', 1)[-1]: v
-#         for k, v in key_dict.items()
-#         if k.startswith(prefix)
-#     }
-#     return filtered
+        container_usage_result["memory"] += ram_value
+        container_usage_result["cpu"] += cpu_value
 
-
-# def test_job_status(body, status_name):
-#     """
-#     Examine the job body to see if its status is status_name.
-#     """
-#     status = body['status']
-#     if 'conditions' in status:
-#         for i in status['conditions']:
-#             if i['type'] == status_name and i['status'].lower() == 'true':
-#                 return True
-#     return False
+        return container_usage_result

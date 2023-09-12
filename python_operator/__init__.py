@@ -1,6 +1,5 @@
 # .operator contains the logic
+from . import operator
 
-from .operator import os
-
-assert os is not None
+assert operator is not None
 print("Imported operator")
