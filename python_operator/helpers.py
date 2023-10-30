@@ -1,65 +1,64 @@
 from kubernetes import utils
-from models import ContainerUsage
+from .models.container_usage import ContainerUsage
 import logging 
 from si_prefix import si_parse
 import bitmath
 import si_prefix
 
-def usage_ram_cpu_pod(containers):
-    return calculate_ram_cpu_pod(containers, "usage")
+def usage_ram_cpu_container(container):
+    container_ram_cpu = container["usage"]
+    return calculate_ram_cpu_container(container_ram_cpu)
 
-def request_ram_cpu_pod(containers):
-    return calculate_ram_cpu_pod(containers, "requests")
+def request_ram_cpu_container(container):
+    container_ram_cpu = container["resources"]["requests"]
+    return calculate_ram_cpu_container(container_ram_cpu)
 
-def limit_ram_cpu_pod(containers):
-    return calculate_ram_cpu_pod(containers, "limits")
+def limit_ram_cpu_container(container):
+    container_ram_cpu = container["resources"]["limits"]
+    return calculate_ram_cpu_container(container_ram_cpu)
 
-def calculate_ram_cpu_pod(containers, query):
+def calculate_ram_cpu_container(container):
     """
-    input values: [containers]
-    output values: { 'memory': Decimal,'cpu': Decimal}
+    input values: container
+    output values: ContainerUsage
     """
-    container_usage_list: list(ContainerUsage) = list()
+    container_ram_cpu: ContainerUsage = None
 
-    for container in containers:
-        container_name = container["name"]
-        container_usage = None
-        if query == "usage" and query in container:
-            container_usage = container["usage"]  # For the metrics api
-        elif query in container["resources"]:
-            container_usage = container["resources"][query]
-        else:
-            logging.fatal(f"the {query} key doesn't exist")
-
-        cpu_value, ram_value = (0, 0)
-        if container_usage != None:
-            if "cpu" in container_usage:
-                cpu_value = si_parse(container_usage["cpu"])
-            if "memory" in container_usage:
-                ram_value = utils.parse_quantity(container_usage["memory"])
+    cpu_value, ram_value = (0, 0)
+    if container != None:
+        if "cpu" in container:
+            cpu_value = si_parse(container["cpu"])
+        if "memory" in container:
+            ram_value = utils.parse_quantity(container["memory"])
         
-        container_usage_list.append(ContainerUsage(container_name, cpu_value, ram_value))
-                
-    return container_usage_list
+    container_ram_cpu = ContainerUsage(cpu=cpu_value, memory=ram_value)
+
+    return container_ram_cpu
+
+def convert_list_tomap(containers):
+    cont_map = dict()
+    for cont in containers:
+        cont_map[cont["name"]] = cont
+    return cont_map
 
 def containers_request_limit(pod, KUBE_CORE_API):
     pod_name  = pod["metadata"]["name"]
     namespace = pod["metadata"]["namespace"]
+    
     k8s_pod = KUBE_CORE_API.read_namespaced_pod(name=pod_name, namespace=namespace).to_dict()
-
-    box_usage = usage_ram_cpu_pod(pod["containers"])
-    box_request = request_ram_cpu_pod(k8s_pod["spec"]["containers"])
-    box_limit = limit_ram_cpu_pod(k8s_pod["spec"]["containers"])
-
-    # Calculating the request memory for the pods
-    # Calculating the limit memory for the pods
+    usage_containers = convert_list_tomap(pod["containers"])
     containers_request_limit = dict()
-    for container in pod["containers"]: 
+
+    for container in k8s_pod["spec"]["containers"]: 
         container_name = container["name"]
 
-        box_usage_mem_bytes = bitmath.Byte(float(box_usage["memory"][container_name]))
-        box_request_mem_bytes = bitmath.Byte(float(box_request["memory"][container_name]))
-        box_limit_mem_bytes = bitmath.Byte(float(box_limit["memory"][container_name]))
+        box_usage = usage_ram_cpu_container(usage_containers[container_name])
+        box_request = request_ram_cpu_container(container)
+        box_limit = limit_ram_cpu_container(container)
+
+        box_usage_mem_bytes = bitmath.Byte(float(box_usage.get_memory()))
+        box_request_mem_bytes = bitmath.Byte(float(box_request.get_memory()))
+        box_limit_mem_bytes = bitmath.Byte(float(box_limit.get_memory()))
 
         mem_calc_request_bytes = ( box_request_mem_bytes + box_usage_mem_bytes)/2
         mem_calc_request_bp = mem_calc_request_bytes.best_prefix(system=bitmath.NIST)
@@ -71,9 +70,9 @@ def containers_request_limit(pod, KUBE_CORE_API):
 
         # Calculating the request cpu for the pods
         # Calculating the limit cpu for the pods
-        box_usage_cpu = box_usage["cpu"][container_name]
-        box_request_cpu = box_request["cpu"][container_name]
-        box_limit_cpu = box_limit["cpu"][container_name]
+        box_usage_cpu = box_usage.get_cpu()
+        box_request_cpu = box_request.get_cpu()
+        box_limit_cpu = box_limit.get_cpu()
 
         cpu_calc_request = ( box_request_cpu + box_usage_cpu)/2
         cpu_request_to_string = si_prefix.si_format(cpu_calc_request).replace(' ', '')
