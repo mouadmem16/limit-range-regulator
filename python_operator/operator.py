@@ -2,7 +2,7 @@ import os
 import kopf
 import kubernetes as kube
 import logging
-from . import helpers
+from .helpers import containers_request_limit
 
 # noinspection PyUnusedLocal
 @kopf.on.startup()
@@ -30,13 +30,11 @@ def startup_fn(settings: kopf.OperatorSettings, **_):
 @kopf.daemon(version="v1", plural="namespaces")
 def check_daemon(stopped, name,  **_):
     while not stopped :
-        if name == "kube-system":
-            # try:
-                k8s_metrics_pods = KUBE_CUSTOM_API.list_namespaced_custom_object(group="metrics.k8s.io", version="v1beta1", plural="pods", namespace=name)
-                for pod in k8s_metrics_pods["items"]:
-                    containers_req_lim = helpers.containers_request_limit(pod, KUBE_CORE_API)
-
-                    logging.info(containers_req_lim)
-            # except Exception as ex:
-            #     logging.fatal(ex)
-        stopped.wait(10)
+        # try:
+            k8s_metrics_pods = KUBE_CUSTOM_API.list_namespaced_custom_object(group="metrics.k8s.io", version="v1beta1", plural="pods", namespace=name)
+            for pod in k8s_metrics_pods["items"]:
+                containers_req_lim = containers_request_limit(pod, KUBE_CORE_API)
+                logging.info(containers_req_lim)
+        # except Exception as ex:
+        #     logging.fatal(ex)
+            stopped.wait(10)
