@@ -15,15 +15,15 @@ class Container(object):
 
     def set_usage(self, container):
         container_ram_cpu = container["usage"]
-        self._usage = self.calculate_ram_cpu_container(container_ram_cpu)
+        self._usage = self._calculate_ram_cpu_container(container_ram_cpu)
 
     def set_limits(self, container):
         container_ram_cpu = container["resources"]["limits"]
-        self._limits = self.calculate_ram_cpu_container(container_ram_cpu)
+        self._limits = self._calculate_ram_cpu_container(container_ram_cpu)
 
     def set_requests(self, container):
         container_ram_cpu = container["resources"]["requests"]
-        self._requests = self.calculate_ram_cpu_container(container_ram_cpu)
+        self._requests = self._calculate_ram_cpu_container(container_ram_cpu)
 
     def set_name(self, name):
         self._name = name
@@ -40,7 +40,7 @@ class Container(object):
     def get_name(self):
         return self._name 
 
-    def calculate_ram_cpu_container(self, container):
+    def _calculate_ram_cpu_container(self, container):
         """
         input values: container
         output values: CpuRamUnit
@@ -68,7 +68,7 @@ class Container(object):
             return cpu
         return "1m"
 
-    def calculate_Forecast(self):
+    def forecast_cpuram(self):
         # Calculating the memory
         box_usage_mem_bytes = Byte(float(self._usage.get_memory()))
         box_request_mem_bytes = Byte(float(self._requests.get_memory()))

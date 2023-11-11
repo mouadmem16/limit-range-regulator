@@ -4,8 +4,8 @@ from kubernetes.client import CustomObjectsApi, CoreV1Api
 
 class Config(object):
     namespaces: list = list()
-    CUSTOM_API = None
-    CORE_API = None
+    CUSTOM_API: CustomObjectsApi = None
+    CORE_API: CoreV1Api = None
 
     def __init__(self):
         try:

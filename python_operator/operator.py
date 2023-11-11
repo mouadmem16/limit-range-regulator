@@ -2,6 +2,7 @@ import kopf
 import logging
 from .helpers import containers_request_limit
 from .config import Config
+from .models.pod import Pod
 
 # noinspection PyUnusedLocal
 @kopf.on.startup()
@@ -20,9 +21,10 @@ def check_daemon(stopped, name,  **_):
     while not stopped :
         if name in Config.namespaces:
             # try:
-                k8s_metrics_pods = Config.CUSTOM_API.list_namespaced_custom_object(group="metrics.k8s.io", version="v1beta1", plural="pods", namespace=name)
-                for pod in k8s_metrics_pods["items"]:
-                    containers_req_lim = containers_request_limit(pod)
+                pods = Config.CORE_API.list_namespaced_pod(namespace=name).to_dict()
+                for pod_spec in pods["items"]:
+                    pod = Pod(spec=pod_spec)
+                    containers_req_lim = pod.forcast()
                     logging.info(containers_req_lim)
             # except Exception as ex:
             #     logging.fatal(ex)

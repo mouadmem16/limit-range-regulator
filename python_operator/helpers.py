@@ -2,7 +2,7 @@ from .models.container import Container
 import logging 
 from .config import Config
 
-def _convert_list_tomap(containers):
+def convert_list_tomap(containers):
     cont_map = dict()
     for cont in containers:
         cont_map[cont["name"]] = cont
@@ -13,7 +13,7 @@ def containers_request_limit(pod):
     namespace = pod["metadata"]["namespace"]
 
     k8s_pod = Config.CORE_API.read_namespaced_pod(name=pod_name, namespace=namespace).to_dict()
-    usage_containers = _convert_list_tomap(pod["containers"])
+    usage_containers = convert_list_tomap(pod["containers"])
 
     for container in k8s_pod["spec"]["containers"]: 
         container_name = container["name"]
@@ -23,7 +23,7 @@ def containers_request_limit(pod):
         cont.set_limits(container)
         cont.set_requests(container)
 
-        forecasted_values = cont.calculate_Forecast()
+        forecasted_values = cont.forecast_cpuram()
 
         logging.info("=======  the CPU/Memory of the container: {} -- pod: {}".format(container_name, pod_name))
         logging.info("=======  the calc request cpu : %s "%forecasted_values["requests"]["cpu"])
