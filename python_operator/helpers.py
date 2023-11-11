@@ -1,5 +1,6 @@
 from .models.container import Container
 import logging 
+from .config import Config
 
 def _convert_list_tomap(containers):
     cont_map = dict()
@@ -7,11 +8,11 @@ def _convert_list_tomap(containers):
         cont_map[cont["name"]] = cont
     return cont_map
 
-def containers_request_limit(pod, KUBE_CORE_API):
+def containers_request_limit(pod):
     pod_name  = pod["metadata"]["name"]
     namespace = pod["metadata"]["namespace"]
 
-    k8s_pod = KUBE_CORE_API.read_namespaced_pod(name=pod_name, namespace=namespace).to_dict()
+    k8s_pod = Config.CORE_API.read_namespaced_pod(name=pod_name, namespace=namespace).to_dict()
     usage_containers = _convert_list_tomap(pod["containers"])
 
     for container in k8s_pod["spec"]["containers"]: 
