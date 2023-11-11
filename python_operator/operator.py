@@ -1,6 +1,5 @@
 import kopf
 import logging
-from .helpers import containers_request_limit
 from .config import Config
 from .models.pod import Pod
 

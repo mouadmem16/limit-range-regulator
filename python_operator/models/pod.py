@@ -15,25 +15,20 @@ class Pod(object):
     def forcast(self):
         
         k8s_metrics_pod = Config.CUSTOM_API.get_namespaced_custom_object(group="metrics.k8s.io", version="v1beta1", plural="pods", namespace=self._namespace, name=self._name)
-        # k8s_pod = Config.CORE_API.read_namespaced_pod(name=self._name, namespace=self._namespace).to_dict()
         usage_containers = convert_list_tomap(k8s_metrics_pod["containers"])
 
         forecasted_values = dict()
-        for container in self._spec["spec"]["containers"]: 
-            container_name = container["name"]
+        for container in self._spec["spec"]["containers"]:
+            cont = Container(spec=container)
+            cont.set_usage(usage_containers[cont.get_name()])
 
-            cont = Container(name=container_name)
-            cont.set_usage(usage_containers[container_name])
-            cont.set_limits(container)
-            cont.set_requests(container)
+            forecasted_values[cont.get_name()] = cont.forecast_cpuram()
 
-            forecasted_values[container_name] = cont.forecast_cpuram()
-
-            logging.info("=======  the CPU/Memory of the container: {} -- pod: {}".format(container_name, self._name))
-            logging.info("=======  the calc request cpu : %s "%forecasted_values[container_name]["requests"]["cpu"])
-            logging.info("=======  the calc limit cpu : %s "%forecasted_values[container_name]["limits"]["cpu"])
-            logging.info("=======  the calc request mem : %s "%forecasted_values[container_name]["requests"]["memory"])
-            logging.info("=======  the calc limit mem : %s "%forecasted_values[container_name]["limits"]["memory"])
+            logging.info("=======  the CPU/Memory of the container: {} -- pod: {}".format(cont.get_name(), self._name))
+            logging.info("=======  the calc request cpu : %s "%forecasted_values[cont.get_name()]["requests"]["cpu"])
+            logging.info("=======  the calc limit cpu : %s "%forecasted_values[cont.get_name()]["limits"]["cpu"])
+            logging.info("=======  the calc request mem : %s "%forecasted_values[cont.get_name()]["requests"]["memory"])
+            logging.info("=======  the calc limit mem : %s "%forecasted_values[cont.get_name()]["limits"]["memory"])
 
         return forecasted_values
 

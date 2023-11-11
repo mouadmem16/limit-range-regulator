@@ -5,13 +5,16 @@ from bitmath import Byte, NIST
 
 class Container(object):
 
-    def __init__(self, name=None, cpu=0.0, memory=0.0):
+    def __init__(self, name=None, cpu=0.0, memory=0.0, spec=None):
+        self._spec               = spec
         self._usage              = CpuRamUnit(cpu, memory)
         self._requests           = CpuRamUnit(cpu, memory)
         self._limits             = CpuRamUnit(cpu, memory)
         self._forecast_requests  = CpuRamUnit(cpu, memory)
         self._forecast_limits    = CpuRamUnit(cpu, memory)
-        self._name               = name
+        self._name               = self._spec["name"]
+        self.set_limits(self._spec)
+        self.set_requests(self._spec)
 
     def set_usage(self, container):
         container_ram_cpu = container["usage"]
