@@ -10,6 +10,10 @@ class Config(object):
     def __init__(self):
         try:
             Config.namespaces = os.environ['NAMESPACES'].split(",")
+            if len(Config.namespaces) == 0:
+                raise Exception("The env var NAMESPACES is Empty")
+            if(Config.namespaces[0].lower() == "all"):
+                Config.namespaces.clear()
         except Exception as ex:
             self.show_usage("NAMESPACES", ex)
         
@@ -17,7 +21,7 @@ class Config(object):
         logging.info("""
             There are some env variables that have to be set
             * The env variable NAMESPACES to define the selectable namespaces
-                   NAMESPACES=default,kube-system,....
+                   NAMESPACES=default,kube-system,.... OR NAMESPACES=ALL
         """)
         logging.fatal(f"You have to fill the {attribut} env variable !!")
         logging.fatal(f"{ex}")

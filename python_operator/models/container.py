@@ -1,32 +1,32 @@
-from .cpu_ram_unit import CpuRamUnit
+from .cpu_memory_unit import CpuMemoryUnit
 from kubernetes.utils import parse_quantity
 from si_prefix import si_parse, si_format
 from bitmath import Byte, NIST
 
 class Container(object):
 
-    def __init__(self, name=None, cpu=0.0, memory=0.0, spec=None):
+    def __init__(self, cpu=0.0, memory=0.0, spec=None):
         self._spec               = spec
-        self._usage              = CpuRamUnit(cpu, memory)
-        self._requests           = CpuRamUnit(cpu, memory)
-        self._limits             = CpuRamUnit(cpu, memory)
-        self._forecast_requests  = CpuRamUnit(cpu, memory)
-        self._forecast_limits    = CpuRamUnit(cpu, memory)
         self._name               = self._spec["name"]
+        self._usage              = CpuMemoryUnit(cpu, memory)
+        self._requests           = CpuMemoryUnit(cpu, memory)
+        self._limits             = CpuMemoryUnit(cpu, memory)
         self.set_limits(self._spec)
         self.set_requests(self._spec)
+        self._forecast_requests  = {"cpu": self._requests.get_cpu(), "memory": self._requests.get_memory()}
+        self._forecast_limits    = {"cpu": self._limits.get_cpu(), "memory": self._limits.get_memory()}
 
     def set_usage(self, container):
-        container_ram_cpu = container["usage"]
-        self._usage = self._calculate_ram_cpu_container(container_ram_cpu)
+        container_memory_cpu = container["usage"]
+        self._usage = self._calculate_memory_cpu_container(container_memory_cpu)
 
     def set_limits(self, container):
-        container_ram_cpu = container["resources"]["limits"]
-        self._limits = self._calculate_ram_cpu_container(container_ram_cpu)
+        container_memory_cpu = container["resources"]["limits"]
+        self._limits = self._calculate_memory_cpu_container(container_memory_cpu)
 
     def set_requests(self, container):
-        container_ram_cpu = container["resources"]["requests"]
-        self._requests = self._calculate_ram_cpu_container(container_ram_cpu)
+        container_memory_cpu = container["resources"]["requests"]
+        self._requests = self._calculate_memory_cpu_container(container_memory_cpu)
 
     def set_name(self, name):
         self._name = name
@@ -43,23 +43,29 @@ class Container(object):
     def get_name(self):
         return self._name 
 
-    def _calculate_ram_cpu_container(self, container):
+    def get_forecast_requests(self):
+        return self._forecast_requests 
+
+    def get_forecast_limits(self):
+        return self._forecast_limits 
+
+    def _calculate_memory_cpu_container(self, container):
         """
         input values: container
-        output values: CpuRamUnit
+        output values: CpuMemoryUnit
         """
-        container_ram_cpu: CpuRamUnit = None
+        container_memory_cpu: CpuMemoryUnit = None
 
-        cpu_value, ram_value = (0, 0)
+        cpu_value, memory_value = (0, 0)
         if container != None:
             if "cpu" in container:
                 cpu_value = si_parse(container["cpu"])
             if "memory" in container:
-                ram_value = parse_quantity(container["memory"])
+                memory_value = parse_quantity(container["memory"])
             
-        container_ram_cpu = CpuRamUnit(cpu=cpu_value, ram=ram_value)
+        container_memory_cpu = CpuMemoryUnit(cpu=cpu_value, memory=memory_value)
 
-        return container_ram_cpu
+        return container_memory_cpu
     
     def _regulazing_cpu_value(self, cpu):
         si_units = {'y': 10**(-24), 'z': 10**(-21), 'a': 10**(-18), 'f': 10**(-15), 'p': 10**(-12), 'µ': 10**(-6), 'k': 10**3, 'M': 10**6, 'G': 10**9, 'T': 10**12, 'P': 10**15, 'E': 10**18, 'Z': 10**21, 'Y': 10**24}
@@ -71,7 +77,7 @@ class Container(object):
             return cpu
         return "1m"
 
-    def forecast_cpuram(self):
+    def forecast_cpumemory(self):
         # Calculating the memory
         box_usage_mem_bytes = Byte(float(self._usage.get_memory()))
         box_request_mem_bytes = Byte(float(self._requests.get_memory()))
@@ -106,6 +112,12 @@ class Container(object):
         cpu_limit_to_string = si_format(cpu_calc_limit).replace(' ', '')
         cpu_limit_to_string = self._regulazing_cpu_value(cpu_limit_to_string)
 
-        return {"requests": {"cpu": cpu_request_to_string, "memory": mem_request_to_string}, "limits": {"cpu": cpu_limit_to_string, "memory": mem_limit_to_string}}
+        self._forecast_requests  = {"cpu": cpu_request_to_string, "memory": mem_request_to_string}
+        self._forecast_limits    = {"cpu": cpu_limit_to_string, "memory": mem_limit_to_string}
 
+    def __repr__(self):
+        return "{ \"requests\": { \"cpu\": %s, \"memory\":%s } , \"limits\": { \"cpu\": %s, \"memory\":%s } }"%(
+            self._forecast_requests["cpu"], self._forecast_requests["memory"],
+            self._forecast_limits["cpu"], self._forecast_limits["memory"]
+        )
     
