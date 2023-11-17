@@ -3,6 +3,7 @@ from .container import Container
 from ..config import Config
 from ..helpers import convert_list_tomap
 from kubernetes.client.exceptions import ApiException
+import re
 
 class Pod(object):
     
@@ -50,5 +51,6 @@ class Pod(object):
             logging.info("=======  the calc request mem : %s "%cont.get_forecast_requests()["memory"])
             logging.info("=======  the calc limit mem : %s "%cont.get_forecast_limits()["memory"])
     
-
+    def repctrl_type(self):
+        pass
         
