@@ -14,17 +14,16 @@ class Config(object):
                 raise Exception("The env var NAMESPACES is Empty")
             if(Config.namespaces[0].lower() == "all"):
                 Config.namespaces.clear()
-        except Exception as ex:
-            self.show_usage("NAMESPACES", ex)
+        except Exception:
+            self.show_usage("NAMESPACES")
         
-    def show_usage(self, attribut, ex):
+    def show_usage(self, attribut):
         logging.info("""
             There are some env variables that have to be set
             * The env variable NAMESPACES to define the selectable namespaces
                    NAMESPACES=default,kube-system,.... OR NAMESPACES=ALL
         """)
-        logging.fatal(f"You have to fill the {attribut} env variable !!")
-        logging.fatal(f"{ex}")
+        raise Exception(f"You have to fill the {attribut} env variable !!")
 
     @staticmethod
     def define_API():

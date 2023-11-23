@@ -3,10 +3,8 @@ from .container import Container
 from ..config import Config
 from ..helpers import convert_list_tomap
 from kubernetes.client.exceptions import ApiException
-import re
 
 class Pod(object):
-    
     def __init__(self, spec):
         if(spec == None): 
             logging.fatal("spec attribute is not given in the pod creation")
@@ -50,7 +48,22 @@ class Pod(object):
             logging.info("=======  the calc limit cpu : %s "%cont.get_forecast_limits()["cpu"])
             logging.info("=======  the calc request mem : %s "%cont.get_forecast_requests()["memory"])
             logging.info("=======  the calc limit mem : %s "%cont.get_forecast_limits()["memory"])
-    
-    def repctrl_type(self):
-        pass
-        
+        ctrl_spec = self.ctrl_spec(self._spec["metadata"]["owner_references"])
+        logging.info("=======  the controller Kind: %s name: %s "%(ctrl_spec["kind"],ctrl_spec["name"]))
+
+    def ctrl_spec(self, spec):
+        if spec == None:
+            return dict()
+        name = spec[0]["name"]
+        pluralname = spec[0]["kind"].lower()+"s"
+        api_version = spec[0].get("apiVersion") if spec[0].get("apiVersion") != None else spec[0].get("api_version") 
+        group = api_version.split("/")[0]
+        version = api_version.split("/")[1]
+        resource = Config.CUSTOM_API.get_namespaced_custom_object(group=group, version=version, plural=pluralname, namespace=self._namespace, name=name)            
+        try :
+            return self.ctrl_spec(resource["metadata"]["ownerReferences"])
+        except KeyError :
+            return spec[0]
+
+
+
